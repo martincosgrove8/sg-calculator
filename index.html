@@ -1268,12 +1268,16 @@ const SG_OTT_MISS_PENALTY = -0.20;
 
 const COURSES = {
   'hackett-front': { name: 'Hackett', nine: 'Front 9 (holes 1–9)',   startHole: 1,  pars: [5,4,4,5,3,4,3,4,5],
+    si: [5,3,7,1,9,4,8,6,2],
     yards: { blue:[510,360,362,523,159,401,171,431,539], white:[473,326,332,486,155,394,144,423,529], yellow:[462,325,301,481,143,377,141,378,521] } },
   'hackett-back':  { name: 'Hackett', nine: 'Back 9 (holes 10–18)',  startHole: 10, pars: [4,3,4,5,4,4,3,4,4],
+    si: [4,8,2,1,5,3,9,6,7],
     yards: { blue:[375,202,411,517,413,390,177,403,358], white:[368,162,404,506,358,381,170,397,350], yellow:[318,150,331,495,296,339,137,381,297] } },
   'hackett-full':  { name: 'Hackett', nine: 'Full 18',               startHole: 1,  pars: [5,4,4,5,3,4,3,4,5, 4,3,4,5,4,4,3,4,4],
+    si: [9,5,13,1,17,7,15,11,3, 8,16,4,2,10,6,18,12,14],
     yards: { blue:[510,360,362,523,159,401,171,431,539, 375,202,411,517,413,390,177,403,358], white:[473,326,332,486,155,394,144,423,529, 368,162,404,506,358,381,170,397,350], yellow:[462,325,301,481,143,377,141,378,521, 318,150,331,495,296,339,137,381,297] } },
   'wad-front':     { name: 'Wild Atlantic Dunes', nine: 'Front 9 (holes 1–9)',   startHole: 1,  pars: [5,4,4,5,3,4,3,5,4],
+    si: [3,7,5,1,9,4,8,2,6],
     yards: { blue:[510,360,362,523,159,401,171,554,373], white:[473,326,332,486,155,394,144,515,318], yellow:[462,325,301,481,143,377,141,494,273] } },
   'wad-back':      { name: 'Wild Atlantic Dunes', nine: 'Back 9 (holes 10–18)',  startHole: 10, pars: [3,4,4,5,3,4,3,5,5],
     yards: { blue:[229,383,447,561,180,342,160,431,539], white:[214,372,430,552,161,338,125,423,529], yellow:[171,353,382,440,143,325,117,378,521] } },
@@ -2433,20 +2437,31 @@ function showConfirmModal() {
   const date   = fmtDate(roundInfo.date) || '';
   document.getElementById('confirm-modal-meta').textContent = [course, date, roundInfo.tees].filter(Boolean).join(' · ');
 
-  let rows = '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px 4px;color:var(--text-3);font-weight:600">Hole</th><th style="padding:6px 4px;color:var(--text-3);font-weight:600">Par</th><th style="padding:6px 4px;color:var(--text-3);font-weight:600">Score</th><th style="padding:6px 4px;color:var(--text-3);font-weight:600">+/-</th></tr>';
-  holes.forEach(h => {
+  const courseData = COURSES[roundInfo.courseKey];
+  const siArr = courseData && courseData.si ? courseData.si : null;
+
+  const th = s => `<th style="padding:6px 4px;color:var(--text-3);font-weight:600;text-align:center">${s}</th>`;
+  const thL = s => `<th style="padding:6px 4px;color:var(--text-3);font-weight:600;text-align:left">${s}</th>`;
+  let rows = `<tr style="border-bottom:1px solid var(--border)">${thL('Hole')}${th('SI')}${th('Par')}${th('Score')}${th('+/- Cumul.')}</tr>`;
+
+  let cumScore = 0, cumPar = 0;
+  holes.forEach((h, i) => {
     const sc = effectiveScore(h) || h.par;
-    const d  = sc - h.par;
-    const dStr = d === 0 ? 'E' : d > 0 ? '+' + d : '' + d;
-    const dCol = d < 0 ? 'var(--green-pos)' : d > 0 ? 'var(--red-neg)' : 'var(--text-3)';
+    const si = siArr ? siArr[i] : null;
+    cumScore += sc;
+    cumPar   += h.par;
+    const cum = cumScore - cumPar;
+    const cumStr = cum === 0 ? 'E' : cum > 0 ? '+' + cum : '' + cum;
+    const cumCol = cum < 0 ? 'var(--green-pos)' : cum > 0 ? 'var(--red-neg)' : 'var(--text-3)';
     rows += `<tr style="border-bottom:1px solid rgba(42,58,85,.3)">
       <td style="padding:5px 4px;color:var(--text-2)">H${h.holeNum}</td>
+      <td style="padding:5px 4px;text-align:center;color:var(--text-3)">${si !== null ? si : '—'}</td>
       <td style="padding:5px 4px;text-align:center;color:var(--text-2)">${h.par}</td>
       <td style="padding:5px 4px;text-align:center;font-weight:700;color:var(--text)">${sc}</td>
-      <td style="padding:5px 4px;text-align:center;font-weight:700;color:${dCol}">${dStr}</td>
+      <td style="padding:5px 4px;text-align:center;font-weight:700;color:${cumCol}">${cumStr}</td>
     </tr>`;
   });
-  rows += `<tr><td style="padding:7px 4px;font-weight:700;color:var(--text)">Total</td><td style="padding:7px 4px;text-align:center;font-weight:700;color:var(--text)">${totalPar}</td><td style="padding:7px 4px;text-align:center;font-weight:700;color:var(--text)">${totalScore}</td><td style="padding:7px 4px;text-align:center;font-weight:700;color:${diffCol}">${diffStr}</td></tr>`;
+  rows += `<tr><td style="padding:7px 4px;font-weight:700;color:var(--text)">Total</td><td></td><td style="padding:7px 4px;text-align:center;font-weight:700;color:var(--text)">${totalPar}</td><td style="padding:7px 4px;text-align:center;font-weight:700;color:var(--text)">${totalScore}</td><td style="padding:7px 4px;text-align:center;font-weight:700;color:${diffCol}">${diffStr}</td></tr>`;
   document.getElementById('confirm-modal-table').innerHTML = rows;
 
   const overlay = document.getElementById('confirm-modal-overlay');
