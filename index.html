@@ -1012,7 +1012,8 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
         </div>
         <div class="field-group">
           <label>Round Type</label>
-          <select id="f-round-type" onchange="roundInfo.roundType=this.value">
+          <select id="f-round-type" onchange="roundInfo.roundType=this.value;checkRoundInfoComplete()">
+            <option value="">— Select —</option>
             <option>Strokeplay</option>
             <option>Stableford</option>
             <option>Match Play</option>
@@ -1067,6 +1068,7 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
         <div class="field-group">
           <label>Course &amp; Nine</label>
           <select id="f-course-nine" onchange="onCourseChange(this.value);checkRoundInfoComplete()">
+            <option value="">— Select Course —</option>
             <optgroup label="Hackett">
               <option value="hackett-front">Hackett — Front 9</option>
               <option value="hackett-back">Hackett — Back 9</option>
@@ -1086,9 +1088,10 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
         </div>
         <div class="field-group">
           <label>Tees Played</label>
-          <select id="f-tees" onchange="onTeesChange(this.value)">
+          <select id="f-tees" onchange="onTeesChange(this.value);checkRoundInfoComplete()">
+            <option value="">— Select Tees —</option>
             <option>Blue (Championship)</option>
-            <option selected>White (Medal)</option>
+            <option>White (Medal)</option>
             <option>Yellow (Gents)</option>
             <option>Red (Ladies)</option>
           </select>
@@ -1101,7 +1104,7 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
   <div id="start-prompt">
     <div style="text-align:center;padding:8px 0 4px">
       <button id="btn-start-round" class="btn-calculate" onclick="startRound()" disabled style="max-width:320px;margin:0 auto;display:block">Start Round</button>
-      <div id="start-prompt-hint" style="margin-top:10px;font-size:.75rem;color:var(--text-3)">Fill in Player Name, Date &amp; Course to begin</div>
+      <div id="start-prompt-hint" style="margin-top:10px;font-size:.75rem;color:var(--text-3)">Fill in Player Name, Date, Course, Tees &amp; Round Type to begin</div>
     </div>
   </div>
 
@@ -1303,9 +1306,9 @@ let roundInfo = {
   date: '',
   courseKey: 'hackett-front',
   courseName: '',
-  tees: 'White (Medal)',
+  tees: '',
   handicap: '',
-  roundType: 'Strokeplay',
+  roundType: '',
   competition: '',
 };
 let holes = [];
@@ -1403,6 +1406,7 @@ function buildHoles(courseKey) {
 
 function onCourseChange(val) {
   roundInfo.courseKey = val;
+  if (!val) return;
   const c = COURSES[val];
   roundInfo.courseName = c.name + ' — ' + c.nine;
   holes = buildHoles(val);
@@ -1416,6 +1420,7 @@ function onCourseChange(val) {
 
 function onTeesChange(val) {
   roundInfo.tees = val;
+  if (!val) return;
   // Re-apply par 3 distances for the new tee selection (only for holes not manually overridden)
   holes.forEach((h, i) => {
     if (h.par === 3) {
@@ -1735,7 +1740,8 @@ function calculate() {
 }
 
 function checkRoundInfoComplete() {
-  const filled = roundInfo.playerName && roundInfo.date && roundInfo.courseKey;
+  const filled = roundInfo.playerName && roundInfo.date && roundInfo.courseKey
+               && roundInfo.roundType && roundInfo.tees;
   const btn = document.getElementById('btn-start-round');
   const hint = document.getElementById('start-prompt-hint');
   if (btn) btn.disabled = !filled;
@@ -2404,13 +2410,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('f-date').value   = new Date().toISOString().slice(0, 10);
   document.getElementById('f-player').value = roundInfo.playerName;
   roundInfo.date      = document.getElementById('f-date').value;
-  roundInfo.tees      = document.getElementById('f-tees').value;
-  roundInfo.roundType = document.getElementById('f-round-type').value;
-  roundInfo.competition = document.getElementById('f-competition').value;
+  roundInfo.tees      = '';
+  roundInfo.roundType = '';
+  roundInfo.competition = '';
+  roundInfo.courseKey = '';
 
-  const key = roundInfo.courseKey;
-  document.getElementById('f-course-nine').value = key;
-  onCourseChange(key);
+  document.getElementById('f-course-nine').value = '';
+  document.getElementById('f-tees').value = '';
+  document.getElementById('f-round-type').value = '';
   checkRoundInfoComplete();
   renderResultsRoundsList();
 });
