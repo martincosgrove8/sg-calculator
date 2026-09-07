@@ -1008,7 +1008,13 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
       <div class="field-row">
         <div class="field-group">
           <label>Handicap Index</label>
-          <input type="number" id="f-handicap" placeholder="e.g. 4.2" step="0.1" min="0" max="54" oninput="roundInfo.handicap=this.value">
+          <div class="stepper" style="justify-content:flex-start;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--navy-3)">
+            <button class="step-btn" style="border-radius:0;border:none;border-right:1px solid var(--border);min-width:36px" onclick="stepHandicap(-0.1)">▼</button>
+            <input type="number" id="f-handicap" placeholder="0.0" step="0.1" min="0" max="54"
+              oninput="roundInfo.handicap=this.value"
+              style="flex:1;text-align:center;background:transparent;border:none;color:var(--text);font-size:.95rem;font-weight:700;font-family:inherit;padding:10px 4px;outline:none;-moz-appearance:textfield;width:60px">
+            <button class="step-btn" style="border-radius:0;border:none;border-left:1px solid var(--border);min-width:36px" onclick="stepHandicap(+0.1)">▲</button>
+          </div>
         </div>
         <div class="field-group">
           <label>Round Type</label>
@@ -1602,6 +1608,13 @@ function nextHole() {
 function goToHole(i) {
   currentHoleIndex = i;
   renderHoleCard();
+}
+
+function stepHandicap(delta) {
+  const cur = parseFloat(document.getElementById('f-handicap').value) || 0;
+  const next = Math.max(0, Math.min(54, Math.round((cur + delta) * 10) / 10));
+  document.getElementById('f-handicap').value = next.toFixed(1);
+  roundInfo.handicap = next.toFixed(1);
 }
 
 function stepAppDist(delta) {
