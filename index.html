@@ -1636,7 +1636,7 @@ function validateAllHoles() {
     const score = effectiveScore(h);
     const putts = effectivePutts(h);
     if (score === null || score < 1) errs.push(`Hole ${n}: score is required (set GIR or enter score)`);
-    if (putts < 1) errs.push(`Hole ${n}: putts must be at least 1`);
+    if (putts < 0) errs.push(`Hole ${n}: putts cannot be negative`);
     if (score !== null && putts > score) errs.push(`Hole ${n}: putts (${putts}) cannot exceed score (${score})`);
     if (score !== null && score > h.par + 8) errs.push(`Hole ${n}: score ${score} seems too high for par ${h.par}`);
     if (h.gir === null) errs.push(`Hole ${n}: GIR must be selected`);
