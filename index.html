@@ -1506,7 +1506,9 @@ function renderHoleCard() {
       <div class="hole-nav" style="padding:4px 0 0">
         <button class="nav-btn" onclick="prevHole()" style="${prevStyle}">← Prev</button>
         <span class="hole-counter">Hole ${currentHoleIndex + 1} of ${holes.length}</span>
-        <button class="nav-btn" onclick="nextHole()">Next →</button>
+        ${isLast
+          ? `<button class="nav-btn" style="background:var(--gold-dark);color:#0a0f1e;font-weight:700;border-color:var(--gold)" onclick="showConfirmModal()">Confirm Round</button>`
+          : `<button class="nav-btn" onclick="nextHole()">Next →</button>`}
       </div>
     </div>
   `;
@@ -2358,6 +2360,54 @@ document.addEventListener('DOMContentLoaded', () => {
   checkRoundInfoComplete();
   renderResultsRoundsList();
 });
+
+function showConfirmModal() {
+  const totalScore = holes.reduce((s, h) => s + (effectiveScore(h) || 0), 0);
+  const totalPar   = holes.reduce((s, h) => s + h.par, 0);
+  const diff = totalScore - totalPar;
+  const diffStr = diff === 0 ? 'E' : diff > 0 ? '+' + diff : '' + diff;
+  const diffCol = diff < 0 ? 'var(--green-pos)' : diff > 0 ? 'var(--red-neg)' : 'var(--text-2)';
+
+  const course = roundInfo.courseName || roundInfo.courseKey || '';
+  const date   = fmtDate(roundInfo.date) || '';
+  document.getElementById('confirm-modal-meta').textContent = [course, date, roundInfo.tees].filter(Boolean).join(' · ');
+
+  let rows = '<tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:6px 4px;color:var(--text-3);font-weight:600">Hole</th><th style="padding:6px 4px;color:var(--text-3);font-weight:600">Par</th><th style="padding:6px 4px;color:var(--text-3);font-weight:600">Score</th><th style="padding:6px 4px;color:var(--text-3);font-weight:600">+/-</th></tr>';
+  holes.forEach(h => {
+    const sc = effectiveScore(h) || h.par;
+    const d  = sc - h.par;
+    const dStr = d === 0 ? 'E' : d > 0 ? '+' + d : '' + d;
+    const dCol = d < 0 ? 'var(--green-pos)' : d > 0 ? 'var(--red-neg)' : 'var(--text-3)';
+    rows += `<tr style="border-bottom:1px solid rgba(42,58,85,.3)">
+      <td style="padding:5px 4px;color:var(--text-2)">H${h.holeNum}</td>
+      <td style="padding:5px 4px;text-align:center;color:var(--text-2)">${h.par}</td>
+      <td style="padding:5px 4px;text-align:center;font-weight:700;color:var(--text)">${sc}</td>
+      <td style="padding:5px 4px;text-align:center;font-weight:700;color:${dCol}">${dStr}</td>
+    </tr>`;
+  });
+  rows += `<tr><td style="padding:7px 4px;font-weight:700;color:var(--text)">Total</td><td style="padding:7px 4px;text-align:center;font-weight:700;color:var(--text)">${totalPar}</td><td style="padding:7px 4px;text-align:center;font-weight:700;color:var(--text)">${totalScore}</td><td style="padding:7px 4px;text-align:center;font-weight:700;color:${diffCol}">${diffStr}</td></tr>`;
+  document.getElementById('confirm-modal-table').innerHTML = rows;
+
+  const overlay = document.getElementById('confirm-modal-overlay');
+  overlay.style.display = 'flex';
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirm-modal-overlay').style.display = 'none';
+}
 </script>
+
+<!-- Confirm Round Modal -->
+<div id="confirm-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--navy-3);border:1px solid var(--border);border-radius:16px;width:100%;max-width:380px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+    <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:4px">Round Summary</div>
+    <div id="confirm-modal-meta" style="font-size:.75rem;color:var(--text-2);margin-bottom:16px"></div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:.82rem" id="confirm-modal-table"></table>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button onclick="closeConfirmModal()" style="flex:1;background:var(--navy-4);border:1px solid var(--border);border-radius:8px;color:var(--text-2);font-size:.85rem;font-weight:700;font-family:inherit;padding:10px;cursor:pointer">← Go Back</button>
+      <button onclick="closeConfirmModal();calculate()" style="flex:2;background:linear-gradient(135deg,var(--gold-dark),var(--gold));border:none;border-radius:8px;color:#0a0f1e;font-size:.85rem;font-weight:700;font-family:inherit;padding:10px;cursor:pointer">Post Round</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
