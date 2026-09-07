@@ -1020,6 +1020,38 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
             <option>Tournament</option>
           </select>
         </div>
+        <div class="field-group">
+          <label>Competition <small style="color:var(--text-3);font-weight:400">(optional)</small></label>
+          <select id="f-competition" onchange="roundInfo.competition=this.value">
+            <option value="">— Practice / None —</option>
+            <optgroup label="September 2026">
+              <option>Graínne Uaile – Betmaster + Club Comp (7 Sep)</option>
+              <option>BGC Strokeplay – GOTY/SGTY (13 Sep)</option>
+              <option>Graínne Uaile – Mulhern's + Club Comp (20 Sep)</option>
+              <option>Graínne Uaile – Athy Kia + Club Comp (27 Sep)</option>
+            </optgroup>
+            <optgroup label="October 2026">
+              <option>Teach John Joe Scramble (4 Oct)</option>
+              <option>Billy McGarry Memorial (25 Oct)</option>
+              <option>PTAA (25 Oct)</option>
+            </optgroup>
+            <optgroup label="November 2026">
+              <option>McIntyre Building Services (1 Nov)</option>
+              <option>PJ McHale (8 Nov)</option>
+              <option>Tommy McHugh (15 Nov)</option>
+              <option>Western Strands Hotel (22 Nov)</option>
+              <option>Kevin Kennedy Motors (29 Nov)</option>
+            </optgroup>
+            <optgroup label="December 2026">
+              <option>Sheldon Complete Home Focus (6 Dec)</option>
+              <option>Christmas Hamper (13 Dec)</option>
+              <option>Mochta Beara (20 Dec)</option>
+              <option>Union Bar Blacksod (26 Dec)</option>
+              <option>Broadhaven Bay Hotel (27 Dec)</option>
+              <option>Club Competition (30 Dec)</option>
+            </optgroup>
+          </select>
+        </div>
       </div>
       <div class="field-row">
         <div class="field-group">
@@ -1259,6 +1291,7 @@ let roundInfo = {
   tees: 'White (Medal)',
   handicap: '',
   roundType: 'Strokeplay',
+  competition: '',
 };
 let holes = [];
 let results = null;
@@ -1734,6 +1767,7 @@ function renderResults() {
     `<span><span class="meta-dot"></span>${esc(date)}</span>`,
     `<span><span class="meta-dot"></span>${esc(roundType)}</span>`,
     hcap ? `<span><span class="meta-dot"></span>${esc(hcap)}</span>` : '',
+    roundInfo.competition ? `<span><span class="meta-dot"></span>${esc(roundInfo.competition)}</span>` : '',
   ].filter(Boolean).join('');
   document.getElementById('res-round-meta').innerHTML = metaParts;
 
@@ -2281,6 +2315,7 @@ function loadFromHistory(id) {
   document.getElementById('f-tees').value        = roundInfo.tees || 'White (Medal)';
   document.getElementById('f-handicap').value    = roundInfo.handicap || '';
   document.getElementById('f-round-type').value  = roundInfo.roundType || 'Strokeplay';
+  document.getElementById('f-competition').value  = roundInfo.competition || '';
 
   renderHoleCard();
   renderProgressDots();
@@ -2348,6 +2383,7 @@ document.addEventListener('DOMContentLoaded', () => {
   roundInfo.date      = document.getElementById('f-date').value;
   roundInfo.tees      = document.getElementById('f-tees').value;
   roundInfo.roundType = document.getElementById('f-round-type').value;
+  roundInfo.competition = document.getElementById('f-competition').value;
 
   const key = roundInfo.courseKey;
   document.getElementById('f-course-nine').value = key;
