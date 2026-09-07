@@ -1145,6 +1145,36 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
     <!-- rendered by renderProgress() -->
   </div>
 
+  <div class="panel" style="margin-top:12px">
+    <div class="collapsible-header" onclick="const b=document.getElementById('sg-explainer-body');b.style.display=b.style.display==='flex'?'none':'flex'" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <span class="section-title" style="margin-bottom:0">What is Strokes Gained?</span>
+      <span style="color:var(--text-3);font-size:.85rem">▼</span>
+    </div>
+    <div style="margin-top:12px;font-size:.82rem;color:var(--text-2);line-height:1.6;display:none;flex-direction:column;gap:10px" id="sg-explainer-body">
+      <p><strong style="color:var(--text)">Strokes Gained (SG)</strong> measures how many strokes you gain or lose compared to a scratch golfer benchmark on each shot. A positive number means you performed better than scratch; negative means worse.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:var(--navy-3);border-radius:8px;padding:10px;border:1px solid var(--border)">
+          <div style="font-weight:700;color:var(--text);margin-bottom:4px">SG: Off the Tee</div>
+          <div>Tee shots on par 4s and par 5s. Based on whether you hit the fairway (FIR).</div>
+        </div>
+        <div style="background:var(--navy-3);border-radius:8px;padding:10px;border:1px solid var(--border)">
+          <div style="font-weight:700;color:var(--text);margin-bottom:4px">SG: Approach</div>
+          <div>Shots into the green. Calculated from your approach distance — longer shots are harder.</div>
+        </div>
+        <div style="background:var(--navy-3);border-radius:8px;padding:10px;border:1px solid var(--border)">
+          <div style="font-weight:700;color:var(--text);margin-bottom:4px">SG: Around the Green</div>
+          <div>Chipping, pitching and bunker play when you miss the green (no GIR).</div>
+        </div>
+        <div style="background:var(--navy-3);border-radius:8px;padding:10px;border:1px solid var(--border)">
+          <div style="font-weight:700;color:var(--text);margin-bottom:4px">SG: Putting</div>
+          <div>All putts once on the green. Based on number of putts vs scratch average.</div>
+        </div>
+      </div>
+      <p><strong style="color:var(--text)">How to read your numbers:</strong> If your SG: Putting is <span style="color:var(--green-pos)">+0.8</span> over 10 rounds, you gain nearly a stroke per round on the greens vs scratch. If SG: Approach is <span style="color:var(--red-neg)">−1.2</span>, that's your biggest area to improve. Focus practice where your SG is most negative.</p>
+      <p style="color:var(--text-3);font-size:.75rem">Benchmarks are based on PGA Tour scratch-golfer averages (Broadie model). Figures are approximate for amateur use.</p>
+    </div>
+  </div>
+
 </div>
 </div>
 
