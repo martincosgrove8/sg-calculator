@@ -1446,9 +1446,9 @@ function renderHoleCard() {
     ${appDistVal !== '' ? `<button class="clear-dist-btn" onclick="clearAppDist()">✕</button>` : ''}
   </div>`;
 
-  const suggested = h.gir === true ? h.par : h.gir === false ? h.par + 1 : null;
-  const scoreDisplay = h.score !== null ? h.score : (suggested !== null ? suggested : '—');
-  const scoreIsSuggested = h.score === null && suggested !== null;
+  const suggested = h.gir === true ? h.par : h.gir === false ? h.par + 1 : h.par;
+  const scoreDisplay = h.score !== null ? h.score : suggested;
+  const scoreIsSuggested = h.score === null;
 
   const prevStyle = isFirst ? 'opacity:.3;pointer-events:none' : '';
   const nextLabel = isLast ? 'Next →' : 'Next →';
