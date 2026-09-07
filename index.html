@@ -1022,9 +1022,9 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
         </div>
       </div>
       <div class="field-row">
-        <div class="field-group">
+        <div class="field-group" style="min-width:0">
           <label>Competition <small style="color:var(--text-3);font-weight:400">(optional)</small></label>
-          <select id="f-competition" onchange="roundInfo.competition=this.value">
+          <select id="f-competition" onchange="roundInfo.competition=this.value" style="width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
             <option value="">— Practice / None —</option>
             <optgroup label="September 2026">
               <option>Grainne Uaile – Clann Lir (6 Sep)</option>
