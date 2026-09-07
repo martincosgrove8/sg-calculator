@@ -45,7 +45,7 @@ html, body {
 
 body {
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-  background: #ffffff;
+  background: #f5f5f5;
   color: var(--text);
   min-height: 100vh;
   padding-bottom: max(70px, calc(70px + env(safe-area-inset-bottom)));
@@ -998,7 +998,7 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
       <div class="field-row">
         <div class="field-group">
           <label>Player Name</label>
-          <input type="text" id="f-player" placeholder="e.g. Martin Cosgrove" oninput="roundInfo.playerName=this.value.trim();checkRoundInfoComplete()">
+          <input type="text" id="f-player" placeholder="e.g. Martin Cosgrove" oninput="roundInfo.playerName=this.value.trim();localStorage.setItem('sg_player_name',this.value.trim());checkRoundInfoComplete()">
         </div>
         <div class="field-group">
           <label>Date</label>
@@ -1349,6 +1349,9 @@ function buildHoles(courseKey) {
     if (appDist === null && par === 4) {
       appDist = getHistoricalAvgAppDist(courseKey, holeNum);
     }
+    if (appDist === null && par === 5) {
+      appDist = getHistoricalAvgAppDist(courseKey, holeNum);
+    }
     return { holeNum, par, fir: null, gir: null, putts: null, score: null, appDist };
   });
 }
@@ -1450,6 +1453,22 @@ function renderHoleCard() {
   const prevStyle = isFirst ? 'opacity:.3;pointer-events:none' : '';
   const nextLabel = isLast ? 'Next →' : 'Next →';
 
+  // Running score vs par for completed holes
+  const completedHoles = holes.filter(h => effectiveScore(h) !== null && h !== holes[currentHoleIndex] || holes.indexOf(h) < currentHoleIndex);
+  let runningScore = 0, runningPar = 0;
+  holes.forEach((hh, idx) => {
+    if (idx < currentHoleIndex) {
+      runningScore += effectiveScore(hh) || 0;
+      runningPar   += hh.par;
+    }
+  });
+  const diff = runningScore - runningPar;
+  const diffStr = diff === 0 ? 'E' : diff > 0 ? '+' + diff : '' + diff;
+  const diffCol = diff < 0 ? 'var(--green-pos)' : diff > 0 ? 'var(--red-neg)' : 'var(--text-2)';
+  const runningHTML = currentHoleIndex > 0
+    ? `<div style="text-align:center;font-size:.75rem;color:var(--text-3);margin-bottom:6px">Through ${currentHoleIndex}: <strong style="color:${diffCol}">${diffStr}</strong> (${runningScore})</div>`
+    : '';
+
   card.innerHTML = `
     <div class="hole-card-header">
       <div class="hole-card-num">
@@ -1483,6 +1502,7 @@ function renderHoleCard() {
         </div>
       </div>
       ${appDistHTML}
+      ${runningHTML}
       <div class="hole-nav" style="padding:4px 0 0">
         <button class="nav-btn" onclick="prevHole()" style="${prevStyle}">← Prev</button>
         <span class="hole-counter">Hole ${currentHoleIndex + 1} of ${holes.length}</span>
@@ -1934,9 +1954,20 @@ function renderProgress() {
   }).join('');
 
   // ── Assemble ──
+  const bestCat  = CATS.map(c => ({ ...c, avg: avg(byDate, c.key) })).sort((a,b) => b.avg - a.avg)[0];
+  const worstCat = CATS.map(c => ({ ...c, avg: avg(byDate, c.key) })).sort((a,b) => a.avg - b.avg)[0];
+  const callout  = `<div class="panel" style="background:var(--navy-3);border:1px solid var(--border)">
+    <div style="font-size:.82rem;color:var(--text-2);line-height:1.6">
+      <span style="font-weight:700;color:var(--text)">Based on ${byDate.length} round${byDate.length !== 1 ? 's' : ''}.</span>
+      Your best category is <strong style="color:var(--green-pos)">${esc(bestCat.label)}</strong> (avg <strong style="color:var(--green-pos)">${fmt(bestCat.avg)}</strong>).
+      Biggest opportunity: <strong style="color:var(--red-neg)">${esc(worstCat.label)}</strong> (avg <strong style="color:var(--red-neg)">${fmt(worstCat.avg)}</strong>).
+    </div>
+  </div>`;
+
   el.innerHTML = `
+    ${callout}
     <div class="panel">
-      <div class="section-title">Rolling Averages</div>
+      <div class="section-title">Rolling Averages <span style="font-size:.75rem;font-weight:400;color:var(--text-3)">(${byDate.length} rounds)</span></div>
       ${avgHTML}
     </div>
 
@@ -2313,6 +2344,8 @@ function openRoundDetail(id) {
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  const savedPlayer = localStorage.getItem('sg_player_name') || '';
+  if (savedPlayer) roundInfo.playerName = savedPlayer;
   document.getElementById('f-date').value   = new Date().toISOString().slice(0, 10);
   document.getElementById('f-player').value = roundInfo.playerName;
   roundInfo.date      = document.getElementById('f-date').value;
