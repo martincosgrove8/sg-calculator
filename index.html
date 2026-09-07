@@ -1313,10 +1313,14 @@ function getDefaultAppDist(courseKey, holeIndex, par) {
 
 function buildHoles(courseKey) {
   const c = COURSES[courseKey];
-  return c.pars.map((par, i) => ({
-    holeNum: c.startHole + i, par, fir: null, gir: null, putts: null, score: null,
-    appDist: getDefaultAppDist(courseKey, i, par)
-  }));
+  return c.pars.map((par, i) => {
+    const holeNum = c.startHole + i;
+    let appDist = getDefaultAppDist(courseKey, i, par);
+    if (appDist === null && par === 4) {
+      appDist = getHistoricalAvgAppDist(courseKey, holeNum);
+    }
+    return { holeNum, par, fir: null, gir: null, putts: null, score: null, appDist };
+  });
 }
 
 function onCourseChange(val) {
@@ -1399,7 +1403,11 @@ function renderHoleCard() {
     <div class="card-field-label">${appDistLabel}</div>
     <div class="stepper">
       <button class="step-btn" onclick="stepAppDist(-2)">▼</button>
-      <span class="step-val" id="app-dist-val">${appDistVal !== '' ? appDistVal : '—'}</span>
+      <input type="number" id="app-dist-input" min="1" max="600"
+        value="${appDistVal !== '' ? appDistVal : ''}"
+        placeholder="—"
+        oninput="setAppDistDirect(this.value)"
+        style="width:56px;text-align:center;background:var(--navy-5);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:1rem;font-weight:700;font-family:inherit;padding:4px 2px;-moz-appearance:textfield;">
       <button class="step-btn" onclick="stepAppDist(+2)">▲</button>
     </div>
     ${appDistVal !== '' ? `<button class="clear-dist-btn" onclick="clearAppDist()">✕</button>` : ''}
@@ -1497,9 +1505,25 @@ function stepAppDist(delta) {
   renderHoleCard();
 }
 
+function setAppDistDirect(val) {
+  const n = parseInt(val, 10);
+  holes[currentHoleIndex].appDist = (!isNaN(n) && n > 0) ? n : null;
+}
+
 function clearAppDist() {
   holes[currentHoleIndex].appDist = null;
   renderHoleCard();
+}
+
+function getHistoricalAvgAppDist(courseKey, holeNum) {
+  const hist = getHistory();
+  const dists = hist
+    .filter(e => e.roundInfo.courseKey === courseKey)
+    .map(e => (e.holes || []).find(h => h.holeNum === holeNum))
+    .filter(h => h && h.appDist !== null && h.appDist !== undefined)
+    .map(h => h.appDist);
+  if (!dists.length) return null;
+  return Math.round(dists.reduce((a, b) => a + b, 0) / dists.length);
 }
 
 // ── Validation ────────────────────────────────────────────────
