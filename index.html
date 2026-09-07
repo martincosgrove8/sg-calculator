@@ -1067,9 +1067,6 @@ canvas#trend-chart { width: 100%; height: 220px; display: block; border-radius: 
   <!-- Validation -->
   <div id="validation-box"></div>
 
-  <!-- Single Post Round button — hidden until round info complete -->
-  <button class="btn-calculate" id="btn-calculate" onclick="calculate()" style="display:none">Post Round</button>
-
 </div>
 </div>
 
@@ -1681,7 +1678,6 @@ function calculate() {
   // Hide score entry and show toast
   document.getElementById('hole-card-section').style.display = 'none';
   document.getElementById('start-prompt').style.display = 'none';
-  document.getElementById('btn-calculate').style.display = 'none';
   document.getElementById('validation-box').style.display = 'none';
 
   const totalScore = holes.reduce((s, h) => s + (effectiveScore(h) || 0), 0);
@@ -1695,7 +1691,6 @@ function checkRoundInfoComplete() {
   const show = !!filled;
   document.getElementById('start-prompt').style.display  = show ? 'none' : '';
   document.getElementById('hole-card-section').style.display = show ? '' : 'none';
-  document.getElementById('btn-calculate').style.display  = show ? '' : 'none';
 }
 
 function showToast(onDismiss) {
