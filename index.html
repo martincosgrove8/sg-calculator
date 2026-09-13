@@ -723,6 +723,43 @@ body {
   border-radius: 10px;
 }
 
+/* ── Shot Map ── */
+.shot-map-wrap { margin: 0 0 8px; }
+.shot-map-label {
+  text-align: center; font-size: .7rem; color: var(--text-2);
+  padding: 0 0 6px; letter-spacing: .2px;
+}
+.shot-map-container {
+  position: relative; width: 100%; cursor: crosshair;
+  user-select: none; touch-action: none;
+  border-radius: 10px; overflow: hidden;
+  background: var(--bg-3);
+}
+.shot-map-container img { width: 100%; display: block; border-radius: 10px; }
+.shot-pin {
+  position: absolute; transform: translate(-50%, -50%);
+  font-size: .6rem; font-weight: 900; padding: 3px 6px;
+  border-radius: 10px; pointer-events: auto; cursor: pointer;
+  line-height: 1.2; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.5);
+  transition: transform .1s;
+}
+.shot-pin:active { transform: translate(-50%,-50%) scale(1.2); }
+.shot-pin.tee-pin { background: var(--red); color: #fff; }
+.shot-pin.app-pin { background: #2563EB; color: #fff; }
+.shot-map-hint {
+  font-size: .62rem; color: var(--text-3); text-align: center;
+  padding: 4px 0 0; letter-spacing: .2px;
+}
+/* Thumbnail pins in scorecard */
+.sc-map-wrap { position: relative; display: inline-block; }
+.sc-map-wrap img { width: 60px; border-radius: 4px; display: block; }
+.sc-pin-dot {
+  position: absolute; width: 8px; height: 8px; border-radius: 50%;
+  transform: translate(-50%,-50%); border: 1.5px solid #fff;
+}
+.sc-pin-dot.tee { background: var(--red); }
+.sc-pin-dot.app { background: #2563EB; }
+
 /* ── Export buttons ── */
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn-save {
@@ -1369,7 +1406,7 @@ function buildHoles(courseKey) {
     if (appDist === null && par === 5) {
       appDist = getHistoricalAvgAppDist(courseKey, holeNum);
     }
-    return { holeNum, par, fir: null, gir: null, putts: null, score: null, appDist };
+    return { holeNum, par, fir: null, gir: null, putts: null, score: null, appDist, teePin: null, appPin: null };
   });
 }
 
@@ -1427,6 +1464,31 @@ function renderHoleCard() {
   const isLast  = currentHoleIndex === holes.length - 1;
 
   const parClass = h.par === 3 ? 'par-3' : h.par === 5 ? 'par-5' : '';
+
+  // Determine if we have a hole image for this course
+  const courseKey = roundInfo.courseKey;
+  const isHackett = courseKey && courseKey.startsWith('hackett');
+  const holeImgIndex = isHackett ? holes[currentHoleIndex].holeNum : null;
+  const holeImgSrc = holeImgIndex !== null ? `holes/hackett/h${String(holeImgIndex).padStart(2,'0')}.jpg` : null;
+
+  // Shot map state
+  const isPar3 = h.par === 3;
+  let shotMapInstruction, shotMapHint = '';
+  if (isPar3) {
+    shotMapInstruction = h.appPin ? 'Tap pin to remove' : 'Tap to place shot';
+  } else {
+    if (!h.teePin)      shotMapInstruction = 'Tap to place tee shot';
+    else if (!h.appPin) shotMapInstruction = 'Tee shot placed — tap to place approach';
+    else                shotMapInstruction = 'Both shots placed — tap a pin to remove';
+  }
+
+  const teePinHTML = (!isPar3 && h.teePin)
+    ? `<div class="shot-pin tee-pin" id="pin-tee" style="left:${(h.teePin.x*100).toFixed(1)}%;top:${(h.teePin.y*100).toFixed(1)}%" onclick="event.stopPropagation();removeShotPin('tee')">T</div>`
+    : '';
+  const appPinHTML = h.appPin
+    ? `<div class="shot-pin app-pin" id="pin-app" style="left:${(h.appPin.x*100).toFixed(1)}%;top:${(h.appPin.y*100).toFixed(1)}%" onclick="event.stopPropagation();removeShotPin('app')">A</div>`
+    : '';
+
   const firHTML = h.par === 3
     ? `<span class="fir-na">N/A — par 3</span>`
     : `<div class="yn-toggle">
@@ -1438,6 +1500,29 @@ function renderHoleCard() {
     <button class="yn-btn${h.gir === true ? ' active-y' : ''}" onclick="setCardYN('gir',true)">Y</button>
     <button class="yn-btn${h.gir === false ? ' active-n' : ''}" onclick="setCardYN('gir',false)">N</button>
   </div>`;
+
+  // Shot map block (Hackett) or FIR/GIR fallback (other courses)
+  const shotMapBlock = holeImgSrc
+    ? `<div class="shot-map-wrap">
+        <div class="shot-map-label">${shotMapInstruction}</div>
+        <div class="shot-map-container" id="shot-map-container" onclick="onShotMapClick(event)">
+          <img src="${holeImgSrc}" draggable="false" alt="Hole ${h.holeNum}">
+          ${teePinHTML}${appPinHTML}
+        </div>
+        <div class="shot-map-hint">
+          ${h.fir !== null && !isPar3 ? `FIR: <strong style="color:${h.fir ? 'var(--green-pos)' : 'var(--red)'}">${h.fir ? 'Y' : 'N'}</strong>` : ''}
+          ${h.fir !== null && h.gir !== null && !isPar3 ? ' · ' : ''}
+          ${h.gir !== null ? `GIR: <strong style="color:${h.gir ? 'var(--green-pos)' : 'var(--red)'}">${h.gir ? 'Y' : 'N'}</strong>` : ''}
+        </div>
+      </div>`
+    : `<div class="card-field">
+        <div class="card-field-label">FIR<small>Fairway</small></div>
+        ${firHTML}
+      </div>
+      <div class="card-field">
+        <div class="card-field-label">GIR<small>Green</small></div>
+        ${girHTML}
+      </div>`;
 
   const puttsVal = effectivePutts(h);
   const puttsIsSuggested = h.putts === null;
@@ -1496,14 +1581,7 @@ function renderHoleCard() {
       <div class="par-pill ${parClass}">Par ${h.par}</div>
     </div>
     <div class="hole-card-body">
-      <div class="card-field">
-        <div class="card-field-label">FIR<small>Fairway</small></div>
-        ${firHTML}
-      </div>
-      <div class="card-field">
-        <div class="card-field-label">GIR<small>Green</small></div>
-        ${girHTML}
-      </div>
+      ${shotMapBlock}
       <div class="card-field">
         <div class="card-field-label">Putts</div>
         <div class="stepper">
@@ -1537,11 +1615,50 @@ function renderHoleCard() {
 
 function setCardYN(field, val) {
   holes[currentHoleIndex][field] = val;
-  if (field === 'gir') {
-    // Reset score suggestion when GIR changes (unless score was manually set)
-    // score state stays as-is, but display will update
-  }
   renderHoleCard();
+}
+
+function onShotMapClick(e) {
+  const container = document.getElementById('shot-map-container');
+  if (!container) return;
+  const rect = container.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const x = (clientX - rect.left) / rect.width;
+  const y = (clientY - rect.top)  / rect.height;
+  const h = holes[currentHoleIndex];
+  const isPar3 = h.par === 3;
+  if (isPar3) {
+    h.appPin = { x, y };
+  } else {
+    if (!h.teePin)      h.teePin = { x, y };
+    else if (!h.appPin) h.appPin = { x, y };
+  }
+  deriveStats(h);
+  renderHoleCard();
+}
+
+function removeShotPin(which) {
+  const h = holes[currentHoleIndex];
+  if (which === 'tee') { h.teePin = null; h.appPin = null; }
+  else                 { h.appPin = null; }
+  deriveStats(h);
+  renderHoleCard();
+}
+
+function deriveStats(h) {
+  const isPar3 = h.par === 3;
+  // FIR: centre 40% of width, middle 50% of height = fairway corridor
+  if (!isPar3) {
+    h.fir = h.teePin
+      ? (h.teePin.x >= 0.28 && h.teePin.x <= 0.72 && h.teePin.y >= 0.25 && h.teePin.y <= 0.80)
+      : null;
+  } else {
+    h.fir = null;
+  }
+  // GIR: top 22% of image = green area (green is at top, tee at bottom)
+  const pinForGIR = isPar3 ? h.appPin : h.appPin;
+  h.gir = pinForGIR ? (pinForGIR.y <= 0.22) : null;
 }
 
 function stepPutts(delta) {
@@ -2207,20 +2324,33 @@ function renderScorecard() {
         cumPar   += holes[i].par;
       }
     }
+    const isHackett = roundInfo.courseKey && roundInfo.courseKey.startsWith('hackett');
     const rows = holeArr.map((h, j) => {
       const i = holeIndexStart + j;
-      const sc = effectiveScore(holes[i]) || h.par;
+      const hh = holes[i];
+      const sc = effectiveScore(hh) || h.par;
       const si = siArr ? siArr[i] : null;
       cumScore += sc;
       cumPar   += h.par;
       const cum = cumScore - cumPar;
       const isLast = j === holeArr.length - 1;
+      // Shot map thumbnail
+      let mapCell = '<td class="sc-map"></td>';
+      if (isHackett) {
+        const imgSrc = `holes/hackett/h${String(hh.holeNum).padStart(2,'0')}.jpg`;
+        const teeDot = (!h.par === 3 && hh.teePin)
+          ? `<div class="sc-pin-dot tee" style="left:${(hh.teePin.x*100).toFixed(1)}%;top:${(hh.teePin.y*100).toFixed(1)}%"></div>` : '';
+        const appDot = hh.appPin
+          ? `<div class="sc-pin-dot app" style="left:${(hh.appPin.x*100).toFixed(1)}%;top:${(hh.appPin.y*100).toFixed(1)}%"></div>` : '';
+        mapCell = `<td class="sc-map"><div class="sc-map-wrap"><img src="${imgSrc}" alt=""><div style="position:absolute;inset:0">${teeDot}${appDot}</div></div></td>`;
+      }
       return `<tr${isLast && is18 && holeIndexStart === 0 ? ' class="sc-nine-divider"' : ''}>
         <td class="sc-hole">${h.holeNum}</td>
         <td class="sc-si">${si !== null ? si : '—'}</td>
         <td class="sc-par">${h.par}</td>
         <td class="sc-score ${scoreCls(sc, h.par)}">${sc}</td>
         <td class="sc-cum ${cumCls(cum)}">${cumStr(cum)}</td>
+        ${mapCell}
       </tr>`;
     });
     return rows.join('');
@@ -2241,6 +2371,7 @@ function renderScorecard() {
       <td class="sc-par">${totalPar}</td>
       <td class="sc-score">${totalScore}</td>
       <td class="sc-cum ${diffCls}">${diffStr}</td>
+      <td></td>
     </tr>`;
   }
 
@@ -2267,6 +2398,7 @@ function renderScorecard() {
     <td class="sc-par">${totalPar}</td>
     <td class="sc-total-val">${totalScore}</td>
     <td class="sc-cum ${totalDiffCls}" style="font-size:.85rem">${totalDiffStr}</td>
+    <td></td>
   </tr>`;
 
   wrap.innerHTML = `<div class="scorecard-wrap">
@@ -2277,6 +2409,7 @@ function renderScorecard() {
         <th>Par</th>
         <th>Score</th>
         <th>+/−</th>
+        <th>Map</th>
       </tr></thead>
       <tbody>${bodyHTML}</tbody>
     </table>
