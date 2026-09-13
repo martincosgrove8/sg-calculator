@@ -730,12 +730,23 @@ body {
   padding: 0 0 6px; letter-spacing: .2px;
 }
 .shot-map-container {
-  position: relative; width: 100%; cursor: crosshair;
+  position: relative; width: 100%; overflow: hidden;
   user-select: none; touch-action: none;
-  border-radius: 10px; overflow: hidden;
-  background: var(--bg-3);
+  border-radius: 10px; background: var(--bg-3);
+  cursor: crosshair;
 }
-.shot-map-container img { width: 100%; display: block; border-radius: 10px; }
+.shot-map-inner {
+  position: relative; width: 100%;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.shot-map-inner img { width: 100%; display: block; }
+.shot-map-zoom-hint {
+  position: absolute; bottom: 6px; right: 8px;
+  font-size: .58rem; color: rgba(255,255,255,.5);
+  background: rgba(0,0,0,.35); padding: 2px 6px; border-radius: 8px;
+  pointer-events: none;
+}
 .shot-pin {
   position: absolute; transform: translate(-50%, -50%);
   font-size: .6rem; font-weight: 900; padding: 3px 6px;
@@ -1504,12 +1515,15 @@ function renderHoleCard() {
   // Shot map block (Hackett) or FIR/GIR fallback (other courses)
   const shotMapBlock = holeImgSrc
     ? `<div class="shot-map-wrap">
-        <div class="shot-map-label">${shotMapInstruction}</div>
-        <div class="shot-map-container" id="shot-map-container" onclick="onShotMapClick(event)">
-          <img src="${holeImgSrc}" draggable="false" alt="Hole ${h.holeNum}">
-          ${teePinHTML}${appPinHTML}
+        <div class="shot-map-label" id="shot-map-label">${shotMapInstruction}</div>
+        <div class="shot-map-container" id="shot-map-container">
+          <div class="shot-map-inner" id="shot-map-inner">
+            <img src="${holeImgSrc}" draggable="false" alt="Hole ${h.holeNum}">
+            ${teePinHTML}${appPinHTML}
+          </div>
+          <div class="shot-map-zoom-hint">pinch to zoom</div>
         </div>
-        <div class="shot-map-hint">
+        <div class="shot-map-hint" id="shot-map-hint">
           ${h.fir !== null && !isPar3 ? `FIR: <strong style="color:${h.fir ? 'var(--green-pos)' : 'var(--red)'}">${h.fir ? 'Y' : 'N'}</strong>` : ''}
           ${h.fir !== null && h.gir !== null && !isPar3 ? ' · ' : ''}
           ${h.gir !== null ? `GIR: <strong style="color:${h.gir ? 'var(--green-pos)' : 'var(--red)'}">${h.gir ? 'Y' : 'N'}</strong>` : ''}
@@ -1611,30 +1625,11 @@ function renderHoleCard() {
   `;
 
   renderProgressDots();
+  initShotMap();
 }
 
 function setCardYN(field, val) {
   holes[currentHoleIndex][field] = val;
-  renderHoleCard();
-}
-
-function onShotMapClick(e) {
-  const container = document.getElementById('shot-map-container');
-  if (!container) return;
-  const rect = container.getBoundingClientRect();
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  const x = (clientX - rect.left) / rect.width;
-  const y = (clientY - rect.top)  / rect.height;
-  const h = holes[currentHoleIndex];
-  const isPar3 = h.par === 3;
-  if (isPar3) {
-    h.appPin = { x, y };
-  } else {
-    if (!h.teePin)      h.teePin = { x, y };
-    else if (!h.appPin) h.appPin = { x, y };
-  }
-  deriveStats(h);
   renderHoleCard();
 }
 
@@ -1659,6 +1654,134 @@ function deriveStats(h) {
   // GIR: top 22% of image = green area (green is at top, tee at bottom)
   const pinForGIR = isPar3 ? h.appPin : h.appPin;
   h.gir = pinForGIR ? (pinForGIR.y <= 0.22) : null;
+}
+
+// ── Shot map zoom / pan ──────────────────────────────────────────────────────
+function initShotMap() {
+  const container = document.getElementById('shot-map-container');
+  const inner     = document.getElementById('shot-map-inner');
+  if (!container || !inner) return;
+
+  let scale = 1, tx = 0, ty = 0;
+  let lastDist = 0, lastMidX = 0, lastMidY = 0;
+  let panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
+  let isPinching = false, wasPinching = false;
+  let tapStartX = 0, tapStartY = 0, tapStartTime = 0;
+
+  function clamp() {
+    const cw = container.offsetWidth;
+    const ch = container.offsetHeight;
+    const iw = cw * scale;
+    const ih = inner.offsetHeight * scale;
+    // don't let image drift so far it shows blank space
+    tx = Math.min(0, Math.max(tx, cw - iw));
+    ty = Math.min(0, Math.max(ty, ch - ih));
+  }
+
+  function applyTransform() {
+    inner.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  }
+
+  function dist(t) {
+    const dx = t[0].clientX - t[1].clientX;
+    const dy = t[0].clientY - t[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+
+  container.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      isPinching = true;
+      lastDist = dist(e.touches);
+      lastMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      lastMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      e.preventDefault();
+    } else if (e.touches.length === 1) {
+      isPinching = false;
+      tapStartX = e.touches[0].clientX;
+      tapStartY = e.touches[0].clientY;
+      tapStartTime = Date.now();
+      panStartX = e.touches[0].clientX;
+      panStartY = e.touches[0].clientY;
+      panStartTx = tx; panStartTy = ty;
+    }
+  }, { passive: false });
+
+  container.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      isPinching = true; wasPinching = true;
+      const d = dist(e.touches);
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const rect = container.getBoundingClientRect();
+      const originX = midX - rect.left;
+      const originY = midY - rect.top;
+      const ds = d / lastDist;
+      const newScale = Math.min(5, Math.max(1, scale * ds));
+      // zoom around pinch midpoint
+      tx = originX - (originX - tx) * (newScale / scale);
+      ty = originY - (originY - ty) * (newScale / scale);
+      scale = newScale;
+      // pan with midpoint movement
+      tx += midX - lastMidX;
+      ty += midY - lastMidY;
+      clamp();
+      applyTransform();
+      lastDist = d; lastMidX = midX; lastMidY = midY;
+      e.preventDefault();
+    } else if (e.touches.length === 1 && scale > 1) {
+      tx = panStartTx + (e.touches[0].clientX - panStartX);
+      ty = panStartTy + (e.touches[0].clientY - panStartY);
+      clamp();
+      applyTransform();
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  container.addEventListener('touchend', e => {
+    if (wasPinching && e.touches.length < 2) { wasPinching = false; isPinching = false; return; }
+    if (isPinching) { isPinching = false; return; }
+    // Tap: short duration, minimal movement
+    const dt = Date.now() - tapStartTime;
+    const dx = Math.abs((e.changedTouches[0]?.clientX ?? tapStartX) - tapStartX);
+    const dy = Math.abs((e.changedTouches[0]?.clientY ?? tapStartY) - tapStartY);
+    if (dt < 300 && dx < 10 && dy < 10) {
+      // Convert screen tap → image-fraction coordinates through zoom/pan transform
+      const rect = container.getBoundingClientRect();
+      const sx = tapStartX - rect.left;
+      const sy = tapStartY - rect.top;
+      const ix = (sx - tx) / (container.offsetWidth  * scale);
+      const iy = (sy - ty) / (inner.offsetHeight      * scale);
+      if (ix >= 0 && ix <= 1 && iy >= 0 && iy <= 1) {
+        placeShotPin(ix, iy);
+      }
+    }
+  });
+
+  // Mouse support (desktop)
+  container.addEventListener('click', e => {
+    if (wasPinching) { wasPinching = false; return; }
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const ix = (sx - tx) / (container.offsetWidth  * scale);
+    const iy = (sy - ty) / (inner.offsetHeight      * scale);
+    if (ix >= 0 && ix <= 1 && iy >= 0 && iy <= 1) {
+      placeShotPin(ix, iy);
+    }
+  });
+}
+
+function placeShotPin(x, y) {
+  const h = holes[currentHoleIndex];
+  const isPar3 = h.par === 3;
+  if (isPar3) {
+    h.appPin = { x, y };
+  } else {
+    if (!h.teePin)      h.teePin = { x, y };
+    else if (!h.appPin) h.appPin = { x, y };
+  }
+  deriveStats(h);
+  renderHoleCard();
 }
 
 function stepPutts(delta) {
